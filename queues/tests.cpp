@@ -1,4 +1,5 @@
 #include "array.h"
+#include "object.h"
 #include <iostream>
 
 using namespace std;
@@ -22,7 +23,19 @@ public:
 
 int main()
 {
+	Array<Object> a(8);
 
+	Object o(5,5);
+	a.add(o);
+	a.add(o);
+
+	cout << "value: " << a[0].getValue1() << ", " << a[0].getValue2() << "\n";
+
+	a.rm();
+
+
+
+/*
 	Guard<ArrayR<int>> a(new ArrayR<int>);
 	(*a).add(5);
 
@@ -35,7 +48,7 @@ int main()
 	} catch (...) {
 		cerr << "[exception] unknown \n";
 	}
-
+*/
 
 	return 0;	
 }
