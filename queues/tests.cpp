@@ -23,15 +23,32 @@ public:
 
 int main()
 {
-	Array<Object> a(8);
+	Array<Object> a;
 
-	Object o(5,5);
-	a.add(o);
-	a.add(o);
+	Object o1(1,1);
+//	Object o2(5,5);
 
-	cout << "value: " << a[0].getValue1() << ", " << a[0].getValue2() << "\n";
+	o1.setValue1(5);
+	cerr << "------------ Add first\n";	
+	a.add(o1);
+	o1.setValue1(7);
+	cerr << "------------ Add second\n";	
+	a.add(o1);
 
-	a.rm();
+	cerr << "------------ Add third\n";	
+	a.add(o1);
+	cerr << "------------ Add forth\n";	
+	a.add(o1);
+	cerr << "------------ Done\n";	
+
+
+//	a[1].setValue1(5);
+//	a[1].setValue2(5);
+
+//	cout << "value: " << a[0].getValue1() << ", " << a[0].getValue2() << "\n";
+//	cout << "value: " << a[1].getValue1() << ", " << a[1].getValue2() << "\n";
+
+//	a.rm();
 
 
 

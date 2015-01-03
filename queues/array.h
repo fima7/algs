@@ -48,8 +48,10 @@ Array<T>::Array(const Array<T> & other)
 	m_capacity = other.m_capacity;
 	m_size = other.m_size;
 	m_buffer = new unsigned char[sizeof(T)*m_capacity];
-    for (int i = 0; i < m_size; i++)
-		reinterpret_cast<T*>(m_buffer)[i] = reinterpret_cast<T*>(m_buffer)[i];
+    for (int i = 0; i < m_size; i++) {
+		*(new (m_buffer + sizeof(T) * i) T()) = (reinterpret_cast<T*>(other.m_buffer)[i]); 
+		// (reinterpret_cast<T*>(m_buffer)[i]) = (reinterpret_cast<T*>(other.m_buffer)[i]); // VPTR copy issue
+	}
 }
 
 template <class T> 
@@ -58,37 +60,71 @@ Array<T>::~Array()
 	if (m_buffer == 0)
 		return;
 
-	for (int i = 0; i < m_size; i++)
-		reinterpret_cast<T*>(m_buffer)[i].~T();
+	for (int i = m_size - 1; i > -1; i--) {
+		cerr << "Delete size " << sizeof(T) << ": ";
+		cerr << &(reinterpret_cast<T*>(m_buffer)[i]);
+		cerr << "\n";	
+		int v = (reinterpret_cast<T*>(m_buffer)[i]).getValue1();
+		cerr << "Value: " << v << "\n";
+		(reinterpret_cast<T*>(m_buffer)[i]).~T();
+	}
 	
 	delete [] m_buffer;
 }
 
+// #include <cstring>
+
 template <class T> 
 void Array<T>::resize(int n)
 {
-    unsigned char *buffer;
+    unsigned char *buffer = 0;
 
-    cout << "resize from " << m_capacity << " to " << n << "\n"; 
+    cerr << "resize from " << m_capacity << " to " << n << "\n"; 
 
-    if (n > 0)
+    if (n > 0) {
 		buffer = new unsigned char[sizeof(T)*n];
+		cerr << "New buffer size " <<  sizeof(T)*n << ": " << (void*)buffer << "\n";
+	}
 
     m_capacity = n;
     int min = m_capacity < m_size ? m_capacity : m_size; 
 
-    for (int i = 0; i < min; i++) // copy objects from old array to new
-		reinterpret_cast<T*>(buffer)[i] = reinterpret_cast<T*>(m_buffer)[i];
+    for (int i = 0; i < min; i++) { // copy objects from old array to new
+		cerr << "Copy from " << &(reinterpret_cast<T*>(m_buffer)[i]) << " to ";
+		cerr << &(reinterpret_cast<T*>(buffer)[i]) << " \n";
+	
+		// construct object in memory block
+		// works: create VPTR, copy data using copy constructor (deep copy) 
+		*(new (buffer + sizeof(T) * i) T()) = (reinterpret_cast<T*>(m_buffer)[i]); 
 
-    for (int i = 0; i < m_size; i++)  // delete objects from old array
-		reinterpret_cast<T*>(m_buffer)[i].~T();
+		// fails: raw copy with VPTR, looses data (shallow copy)
+		// memcpy( (reinterpret_cast<T*>(buffer)+i), (reinterpret_cast<T*>(m_buffer)+i), sizeof(T) );	
+		
+		// fails: doesn't copy VPTR, copy data using copy constructor (deep copy) 
+		// (reinterpret_cast<T*>(buffer)[i]) = (reinterpret_cast<T*>(m_buffer)[i]);						
 
-	if (m_size > m_capacity) // update size when shrink array
-		m_size = m_capacity;
+		/*
+		cout << "Old VPTR\n";	
+		vptr_print( (reinterpret_cast<T*>(m_buffer)[i]) );
+		
+		cout << "New VPTR\n";	
+		vptr_print( (reinterpret_cast<T*>(buffer)[i]) );
+		*/
+	}
 
-	if (m_buffer != 0)	
+
+   	for (int i = m_size - 1; i > -1; i--) { // delete objects from old array
+		cerr << "Delete: " << &(reinterpret_cast<T*>(m_buffer)[i]) << "\n";
+		(reinterpret_cast<T*>(m_buffer)[i]).~T();
+
+	}
+
+
+	if (m_buffer != 0) {	
+		cerr << "Delete old m_buffer: " << (void*)m_buffer << "\n";
 		delete [] m_buffer; // initialy may not be allocated
-
+	}
+		
     m_buffer = buffer;
 }
 
@@ -96,24 +132,31 @@ void Array<T>::resize(int n)
 template <class T> 
 void Array<T>::add(const T & item)
 {
-	cout << "Array add to " << (void*)(m_buffer + sizeof(T) * m_size) << "\n"; 
 
     if (m_capacity == m_size) {
-        if (Array<T>::m_capacity !=0) 
-            resize(2*Array<T>::m_capacity);
+
+        if (m_capacity !=0) 
+            resize(2*m_capacity);
         else
             resize(1);
     }
 
+	cerr << "New place " << (void*)(m_buffer + sizeof(T) * m_size) << "\n"; 
+
 	new (m_buffer + sizeof(T) * m_size) T(item); // place the copy of item into array
-	m_size++;	
+
+
+	if (m_size > m_capacity) 
+		m_size = m_capacity; // shrink
+	else
+		m_size++;			// enlarge
 }
 
 template <class T> 
 void Array<T>::rm()
 {
 	m_size --;
-	cout << "Remove " << m_size << "th element\n";
+	cerr << "Remove " << m_size << "th element\n";
 
 	(reinterpret_cast<T*>(m_buffer)[m_size]).~T();
 	    
@@ -137,7 +180,7 @@ T& Array<T>::operator[](int i)
 	if ( (i < 0) || (i >= m_capacity) )
 		throw std::out_of_range(string("element ") + std::to_string(i) + " while size is " + std::to_string(m_capacity));
 	
-    return (reinterpret_cast<T*>(m_buffer))[i];    
+    return (reinterpret_cast<T*>(m_buffer)[i]);    
 }
 
 template <class T> 
@@ -147,7 +190,7 @@ const T& Array<T>::operator[](int i) const
 		throw std::out_of_range(string("element ") + std::to_string(i) 
 						+ " while size is " + std::to_string(m_capacity));
 
-   return (reinterpret_cast<T*>(m_buffer))[i];    
+   return (reinterpret_cast<T*>(m_buffer)[i]);    
 }
 
 
@@ -158,9 +201,9 @@ const Array<T>& Array<T>::operator=(const Array<T> & rhs)
     if (this != &rhs) {
 
 		for (int i = 0; i < m_size; i++) // delete own objects
-			reinterpret_cast<T*>(m_buffer)[i].~T();
+			(reinterpret_cast<T*>(m_buffer)[i]).~T();
 
-		if (m_buffer) 
+		if (m_buffer != 0) 
             delete [] m_buffer;
 
 		m_size = rhs.m_size;
@@ -169,7 +212,7 @@ const Array<T>& Array<T>::operator=(const Array<T> & rhs)
         m_buffer = new unsigned char[sizeof(T)*m_capacity];
 
 		for (int i = 0; i < m_size; i++)		
-			reinterpret_cast<T*>(m_buffer)[i] = reinterpret_cast<T*>(rhs.m_buffer)[i];
+			(reinterpret_cast<T*>(m_buffer)[i]) = (reinterpret_cast<T*>(rhs.m_buffer)[i]);
 
     }
 	

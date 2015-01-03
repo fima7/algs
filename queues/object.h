@@ -9,11 +9,15 @@ public:
     Object();
     Object(int v1, int v2);
     Object(const Object & other);
-    virtual ~Object();
+    Object(Object & other);
+    virtual  ~Object();
     int getValue1();
     int getValue2();
+    void setValue1(int v);
+    void setValue2(int v);
     Object& operator=(const Object& rhs); 
 
 };
 
+void vptr_print(Object& obj);
 #endif

@@ -21,7 +21,7 @@ Object::Object(int v1, int v2)
 
 Object::~Object()
 {
-    cout << "Object delete: " << this << endl; 
+    cerr << "Object delete: " << this << endl; 
     delete [] m_value;
 }
 
@@ -35,14 +35,39 @@ int Object::getValue2()
     return m_value[1];
 }
 
+void Object::setValue1(int v)
+{
+	m_value[0] = v;	
+}
+
+void Object::setValue2(int v)
+{
+	m_value[1] = v;	
+}
+
+ 
 Object::Object(const Object & other)
 {
-    m_value = new int [2];
-    cout << "Object copy constructor allocate: " << this << endl;
-    cout << "Object copy constructor: " << this << " <----- " << &other << endl;
-    m_value[0] = other.m_value[0];
-    m_value[1] = other.m_value[1];    
+	if (other.m_value != 0) {
+	    m_value = new int [2];
+	    cout << "Object copy constructor allocate: " << this << endl;
+	    cout << "Object copy constructor: " << this << " <----- " << &other << endl;
+	    m_value[0] = other.m_value[0];
+	    m_value[1] = other.m_value[1];    
+	}
 }
+
+Object::Object(Object & other)
+{
+	if (other.m_value != 0) {
+	    m_value = new int [2];
+	    cout << "Object copy constructor allocate: " << this << endl;
+	    cout << "Object copy constructor: " << this << " <----- " << &other << endl;
+	    m_value[0] = other.m_value[0];
+	    m_value[1] = other.m_value[1];    
+	}
+}
+
 
 Object& Object::operator=(const Object& rhs)
 {
@@ -56,5 +81,14 @@ Object& Object::operator=(const Object& rhs)
         m_value[1] = rhs.m_value[1];    
     }
     return *this;
-} 
+}
+
+void vptr_print(Object& obj)
+{
+	cout << "VPTR's Address " << (int*)(&obj+0) << endl;
+	int addr = *(int*)(&obj+0);
+	cout << " VIRTUAL TABLE 's Address " << addr << endl;
+}
+
+ 
 
