@@ -2,20 +2,20 @@
 #define ARRAY_H
 
 #include <stdexcept>
+// #include "iterator.h"
 
-#include <iostream>
-
-
+// #include <iostream>
 using namespace std;
 
 template <class T>
-class Array
+class Array 
 {
 protected:
     unsigned char* m_buffer;
     int m_capacity;
 	int m_size;
-	void resize(int n);    
+	void resize(int n);
+//	void swap(Array<T>& other);
 public:
     Array(int capacity = 0);
     Array(const Array<T> & other);
@@ -26,8 +26,41 @@ public:
     void add(const T & item);
     void rm();    
 	int size(); // Number of elements in the array
-};
 
+	class iterator 
+	{
+	private:
+		T *m_current;
+		int m_position;
+	public:	
+		iterator(T *current, int position) : m_current(current), m_position(position){}
+		iterator& operator =(const iterator& other) {
+			if (this != &other)	{
+				m_current = other.m_current;
+				m_position = other.m_position;
+			}
+			return *this;		
+		}
+		T& operator*() { return *m_current; }
+		T* operator->() { return m_current; }
+
+		const iterator& operator++() {
+			++m_current;
+			++m_position;
+			return *this;			
+		}
+		iterator operator++(int) {
+			iterator tmp(m_current);
+			++m_current;
+			++m_position;
+			return tmp;			
+		}
+		bool operator == (iterator const& i) { return m_position == i.m_position; }
+		bool operator != (iterator const& i) { return !(m_position == i.m_position);  }
+	};
+	iterator begin() { return iterator( reinterpret_cast<T*>(m_buffer),      0); }
+	iterator end()   { return iterator( reinterpret_cast<T*>(m_buffer), m_size); }
+};
 
 //////////////// Array Implementation ///////////////////////
 
@@ -61,11 +94,9 @@ Array<T>::~Array()
 		return;
 
 	for (int i = m_size - 1; i > -1; i--) {
-		cerr << "Delete size " << sizeof(T) << ": ";
-		cerr << &(reinterpret_cast<T*>(m_buffer)[i]);
-		cerr << "\n";	
-		int v = (reinterpret_cast<T*>(m_buffer)[i]).getValue1();
-		cerr << "Value: " << v << "\n";
+		// cerr << "Delete size " << sizeof(T) << ": ";
+		// cerr << &(reinterpret_cast<T*>(m_buffer)[i]);
+		// cerr << "\n";	
 		(reinterpret_cast<T*>(m_buffer)[i]).~T();
 	}
 	
@@ -79,19 +110,19 @@ void Array<T>::resize(int n)
 {
     unsigned char *buffer = 0;
 
-    cerr << "resize from " << m_capacity << " to " << n << "\n"; 
+//    cerr << "resize from " << m_capacity << " to " << n << "\n"; 
 
     if (n > 0) {
 		buffer = new unsigned char[sizeof(T)*n];
-		cerr << "New buffer size " <<  sizeof(T)*n << ": " << (void*)buffer << "\n";
+		// cerr << "New buffer size " <<  sizeof(T)*n << ": " << (void*)buffer << "\n";
 	}
 
     m_capacity = n;
     int min = m_capacity < m_size ? m_capacity : m_size; 
 
     for (int i = 0; i < min; i++) { // copy objects from old array to new
-		cerr << "Copy from " << &(reinterpret_cast<T*>(m_buffer)[i]) << " to ";
-		cerr << &(reinterpret_cast<T*>(buffer)[i]) << " \n";
+		// cerr << "Copy from " << &(reinterpret_cast<T*>(m_buffer)[i]) << " to ";
+		// cerr << &(reinterpret_cast<T*>(buffer)[i]) << " \n";
 	
 		// construct object in memory block
 		// works: create VPTR, copy data using copy constructor (deep copy) 
@@ -114,14 +145,14 @@ void Array<T>::resize(int n)
 
 
    	for (int i = m_size - 1; i > -1; i--) { // delete objects from old array
-		cerr << "Delete: " << &(reinterpret_cast<T*>(m_buffer)[i]) << "\n";
+		// cerr << "Delete: " << &(reinterpret_cast<T*>(m_buffer)[i]) << "\n";
 		(reinterpret_cast<T*>(m_buffer)[i]).~T();
 
 	}
 
 
 	if (m_buffer != 0) {	
-		cerr << "Delete old m_buffer: " << (void*)m_buffer << "\n";
+		// cerr << "Delete old m_buffer: " << (void*)m_buffer << "\n";
 		delete [] m_buffer; // initialy may not be allocated
 	}
 		
@@ -141,7 +172,7 @@ void Array<T>::add(const T & item)
             resize(1);
     }
 
-	cerr << "New place " << (void*)(m_buffer + sizeof(T) * m_size) << "\n"; 
+	// cerr << "New place " << (void*)(m_buffer + sizeof(T) * m_size) << "\n"; 
 
 	new (m_buffer + sizeof(T) * m_size) T(item); // place the copy of item into array
 
@@ -156,7 +187,7 @@ template <class T>
 void Array<T>::rm()
 {
 	m_size --;
-	cerr << "Remove " << m_size << "th element\n";
+	// cerr << "Remove " << m_size << "th element\n";
 
 	(reinterpret_cast<T*>(m_buffer)[m_size]).~T();
 	    
@@ -211,12 +242,28 @@ const Array<T>& Array<T>::operator=(const Array<T> & rhs)
 
         m_buffer = new unsigned char[sizeof(T)*m_capacity];
 
-		for (int i = 0; i < m_size; i++)		
-			(reinterpret_cast<T*>(m_buffer)[i]) = (reinterpret_cast<T*>(rhs.m_buffer)[i]);
+		for (int i = 0; i < m_size; i++) {		
+			*(new (m_buffer + sizeof(T) * i) T()) = (reinterpret_cast<T*>(rhs.m_buffer)[i]); 
+			// (reinterpret_cast<T*>(m_buffer)[i]) = (reinterpret_cast<T*>(rhs.m_buffer)[i]); // VPTR issue
+		}
 
     }
 	
     return *this;    
 }
+
+
+/*
+void Array<T>::swap(Array<T>& other)
+{
+	
+	using std::swap;
+
+	swap(m_buffer, other.m_buffer);
+	swap(m_size, other.m_size);
+	swap(m_capacity, other.m_capacity);
+	
+}
+*/
 
 #endif
